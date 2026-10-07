@@ -1,0 +1,101 @@
+{
+  "info": {
+    "name": "Fuel Route Optimizer API",
+    "description": "Import this collection, set baseUrl, and demo the API in seconds.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "Route - long haul (SF -> NYC)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/route?start=San Francisco, CA&finish=New York, NY",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "route"],
+          "query": [
+            { "key": "start", "value": "San Francisco, CA" },
+            { "key": "finish", "value": "New York, NY" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Route - medium (Cincinnati -> Chicago)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/route?start=Cincinnati, OH&finish=Chicago, IL",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "route"],
+          "query": [
+            { "key": "start", "value": "Cincinnati, OH" },
+            { "key": "finish", "value": "Chicago, IL" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Route - same state (Austin -> Dallas)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/route?start=Austin, TX&finish=Dallas, TX",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "route"],
+          "query": [
+            { "key": "start", "value": "Austin, TX" },
+            { "key": "finish", "value": "Dallas, TX" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Route - coordinates fast path",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/route?start=37.7749,-122.4194&finish=40.7128,-74.0060",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "route"],
+          "query": [
+            { "key": "start", "value": "37.7749,-122.4194" },
+            { "key": "finish", "value": "40.7128,-74.0060" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Route - error case (outside USA -> 400)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/route?start=48.8566,2.3522&finish=New York, NY",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "route"],
+          "query": [
+            { "key": "start", "value": "48.8566,2.3522" },
+            { "key": "finish", "value": "New York, NY" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Interactive map (open in browser)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/map/<request_id from a route response>"
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0"
+      OSRM_BASE_URL: "https://router.project-osrm.org"
+    # data/ (fuel prices + gazetteer + enriched stations) must be present;
+    # see README "Building the dataset" to regenerate it.
+
+  # ---------------------------------------------------------------------------
+  # Optional: self-hosted OSRM (no rate limits, fully offline).
+  # 1. Download a US extract, e.g. from https://download.geofabrik.de/ (north-america/us-us-latest.osm.pbf)
+  # 2. docker compose run --rm osrm-init    (preprocessing, ~10 min)
+  # 3. Uncomment the osrm service below and set OSRM_BASE_URL=http://osrm:5000 in the app service.
+  # ---------------------------------------------------------------------------
+  # osrm:
+  #   image: ghcr.io/project-osrm/osrm-backend:latest
+  #   command: osrm-routed --algorithm mld /data/us-us-latest.osrm
+  #   volumes:
+  #     - ./osrm-data:/data
+  #   ports:
+  #     - "5000:5000"
