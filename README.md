@@ -5,8 +5,8 @@ route, the **cost-optimal fuel stops** for a vehicle with a 500-mile range and 1
 and the **total fuel spend** - computed by exact dynamic programming over ~6,000
 fuel stations, with a single call to the free OSRM routing service.
 
-> Example: *San Francisco → New York* = 2,901 mi, **$411.42** in fuel,
-> 6 refuel stops, solved in ~1 s (first call) / ~5 ms (cached).
+> Example: *San Francisco → New York* = 2,909.8 mi, **$734.17** in fuel,
+> 14 refuel stops (242.58 gal), first call ~4–5 s / cached call ~15 ms.
 
 ## Quick start
 
@@ -28,39 +28,46 @@ Open **http://localhost:8000/api/docs** for the interactive Swagger UI, or impor
 
 ```json
 {
-  "request_id": "1a2b3c4d5e6f",
+  "request_id": "a2c5c6c5d06a",
   "query": { "start": "Cincinnati, OH", "finish": "Chicago, IL" },
   "vehicle": { "range_miles": 500.0, "mpg": 10.0, "start_with_full_tank": true },
   "route": {
-    "distance_miles": 290.4,
-    "duration_hours": 4.6,
-    "start_coords": [39.103, -84.512],
-    "finish_coords": [41.878, -87.63],
+    "distance_miles": 289.5,
+    "duration_hours": 5.65,
+    "start_coords": [39.1012809, -84.5127405],
+    "finish_coords": [41.8755616, -87.6244212],
     "geojson": { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ ... ] } }
   },
   "fuel_plan": {
-    "total_gallons": 29.04,
-    "total_cost_usd": 97.31,
-    "total_stop_detour_miles": 2.1,
-    "stops": [
-      {
-        "order": 1,
-        "station": { "opis_id": "50", "name": "TA COUNCIL BLUFFS ...", "city": "...", "state": "IA", "lat": 41.2, "lon": -95.8, "price_per_gallon": 2.918 },
-        "miles_from_start": 178.6,
-        "detour_miles": 0.4,
-        "gallons_to_buy": 21.6,
-        "cost_usd": 63.03
-      }
-    ]
+    "total_gallons": 0.0,
+    "total_cost_usd": 0.0,
+    "total_stop_detour_miles": 0.0,
+    "stops": []
   },
   "map": {
     "static_url": "https://staticmap.openstreetmap.de/staticmap.php?...",
-    "interactive_url": "/map/1a2b3c4d5e6f",
+    "interactive_url": "/map/a2c5c6c5d06a",
     "legs_geojson": { "type": "FeatureCollection", "features": [ ... ] }
   },
-  "corridor_candidate_count": 14,
-  "timing_ms": { "geocode": 180.2, "osrm": 412.7, "corridor": 3.1, "optimize": 0.4, "total": 610.5 },
+  "corridor_candidate_count": 125,
+  "timing_ms": { "geocode": 2764.3, "osrm": 1437.1, "corridor": 39.3, "optimize": 3.6, "total": 4244.4 },
   "cached": false
+}
+```
+
+The 289-mile Cincinnati → Chicago trip needs **zero refuel stops**: the tank
+already covers it. On a long haul (San Francisco → New York, 2,909.8 mi) the
+same endpoint returns 14 stops, e.g.:
+
+```json
+{
+  "order": 1,
+  "station": { "opis_id": "7873", "name": "One9 #387", "city": "Carlin", "state": "NV",
+               "lat": 40.71381, "lon": -116.10397, "price_per_gallon": 3.439 },
+  "miles_from_start": 484.0,
+  "detour_miles": 0.6,
+  "gallons_to_buy": 7.06,
+  "cost_usd": 24.28
 }
 ```
 
@@ -88,7 +95,7 @@ Postman / browser
         ▼
 ┌──────────────────── Django 6.1 + django-ninja ────────────────────┐
 │  validation (Pydantic) → response cache (keyed by normalized      │
-│  start+finish; repeat requests answer in ~5 ms, "cached": true)   │
+│  start+finish; repeat requests answer in ~15 ms, "cached": true)  │
 │        ▼ miss                                                     │
 │  1. Nominatim geocoding   ≤ 1 call, only for text inputs, cached  │
 │  2. OSRM route            exactly 1 call per uncached request:    │
@@ -146,8 +153,10 @@ Two properties make this robust in practice:
   off-route detour (a `1e-3 $/mile` priority term), so the map stays clean and
   the truck never leaves the highway for a tied price.
 
-Complexity is `O(n · k)` where `n` = corridor stations and `k` = stations within
-one tank of each - a few hundred float operations on typical US routes.
+Complexity: the DP scans all earlier nodes for each candidate (`O(n²)` cheap
+float comparisons, `n` = corridor stations, typically a few hundred), of which
+only `O(n · k)` edges are feasible (`k` = stations within one tank). Measured
+~25–30 ms for the 544-candidate San Francisco → New York corridor.
 
 ### Assumptions (explicit, configurable)
 
@@ -156,7 +165,7 @@ one tank of each - a few hundred float operations on typical US routes.
 | Tank is full at departure | yes (`FUEL_START_FULL`) | The first 500 miles are already paid; if disabled, the first stop prices the pre-station miles at its own pump price. |
 | Refuel amounts are continuous | yes | Gallons can be fractional (truckers pre-authorize by dollar amount anyway). |
 | Station coordinates are city centroids | yes | The provided CSV has no coordinates; stations were geocoded offline to city level (see below). Typical error is a few miles. |
-| Detour distance costs fuel | yes | Each stop adds `2 × offset` miles of consumption, charged at the stop's price. |
+| Equal-cost plans avoid detours | yes | Fuel cost only depends on where gallons are bought; among **tied** cheapest plans the DP prefers stops closest to the highway (`1e-3 $/mile` priority term), so the truck never leaves the road for a tied price. Detour miles are reported but not billed. |
 | Corridor width | 15 mi | Stations farther from the route are ignored; configurable via `CORRIDOR_RADIUS_MILES`. |
 | Canadian stations are excluded | yes | The CSV contains some; the exercise scopes to the USA. |
 

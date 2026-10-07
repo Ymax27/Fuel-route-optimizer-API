@@ -70,8 +70,7 @@ def plan_route(request, start: str, finish: str):
         "mpg": settings.FUEL_EFFICIENCY_MPG,
         "start_with_full_tank": settings.FUEL_START_FULL,
     }, static_url=static_url)
-
-    cache.set(cache_key, response.json(), _CACHE_TTL_S)
+    cache.set(cache_key, response.model_dump_json(), _CACHE_TTL_S)
     cache.set(f"fuelroute:idx:{result.request_id}", cache_key, _CACHE_TTL_S)
     logger.info(
         "route %s -> %s: %.0f mi, $%.2f, %d stops in %s ms",
