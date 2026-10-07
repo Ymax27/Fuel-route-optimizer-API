@@ -23,3 +23,4 @@ staticfiles/
 .vscode/
 *.swp
 .DS_Store
+.freebuff/
