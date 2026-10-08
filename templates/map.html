@@ -68,35 +68,48 @@
 {{ payload|json_script:"payload-data" }}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const payload = JSON.parse(JSON.parse(document.getElementById('payload-data').textContent));
-  const map = L.map('map');
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  // Draw after full layout: initializing the vector renderer before the first
+  // paint can leave Leaflet's clipping bounds uninitialized for long routes.
+  function drawMap() {
+    const payload = JSON.parse(JSON.parse(document.getElementById('payload-data').textContent));
+    const map = L.map('map');
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-  L.geoJSON(payload.route.geojson, {
-    style: { color: '#38bdf8', weight: 5, opacity: 0.9 }
-  }).addTo(map);
+    // Set the view FIRST: layers added to a viewless map are deferred and
+    // rendered mid-zoom-animation by fitBounds, which trips Leaflet's
+    // clipping for long polylines.
+    const routeLayer = L.geoJSON(payload.route.geojson, {
+      style: { color: '#38bdf8', weight: 5, opacity: 0.9 }
+    });
+    map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
 
-  const [slat, slon] = payload.route.start_coords;
-  const [flat, flon] = payload.route.finish_coords;
-  L.marker([slat, slon], { title: 'Start' }).addTo(map)
-    .bindPopup('<b>Start</b><br>' + payload.query.start);
-  L.marker([flat, flon], { title: 'Finish' }).addTo(map)
-    .bindPopup('<b>Finish</b><br>' + payload.query.finish);
+    routeLayer.addTo(map);
 
-  payload.fuel_plan.stops.forEach(s => {
-    L.circleMarker([s.station.lat, s.station.lon], {
-      radius: 9, color: '#0b1220', weight: 2, fillColor: '#4ade80', fillOpacity: 1
-    }).addTo(map).bindPopup(
-      `<b>#${s.order} ${s.station.name}</b><br>` +
-      `${s.station.city}, ${s.station.state}<br>` +
-      `$${s.station.price_per_gallon}/gal · buy ${s.gallons_to_buy} gal<br>` +
-      `cost <b>$${s.cost_usd}</b> · mile ${s.miles_from_start}`
-    );
-  });
+    const [slat, slon] = payload.route.start_coords;
+    const [flat, flon] = payload.route.finish_coords;
+    L.marker([slat, slon], { title: 'Start' }).addTo(map)
+      .bindPopup('<b>Start</b><br>' + payload.query.start);
+    L.marker([flat, flon], { title: 'Finish' }).addTo(map)
+      .bindPopup('<b>Finish</b><br>' + payload.query.finish);
 
-  map.fitBounds(L.geoJSON(payload.route.geojson).getBounds(), { padding: [30, 30] });
+    payload.fuel_plan.stops.forEach(s => {
+      L.circleMarker([s.station.lat, s.station.lon], {
+        radius: 9, color: '#0b1220', weight: 2, fillColor: '#4ade80', fillOpacity: 1
+      }).addTo(map).bindPopup(
+        `<b>#${s.order} ${s.station.name}</b><br>` +
+        `${s.station.city}, ${s.station.state}<br>` +
+        `$${s.station.price_per_gallon}/gal · buy ${s.gallons_to_buy} gal<br>` +
+        `cost <b>$${s.cost_usd}</b> · mile ${s.miles_from_start}`
+      );
+    });
+
+    window.addEventListener('resize', () => map.invalidateSize());
+  }
+
+  if (document.readyState === 'complete') drawMap();
+  else window.addEventListener('load', drawMap);
 </script>
 </body>
 </html>
